@@ -1,5 +1,7 @@
 name: Build Pull Request
-on: pull_request
+on: 
+  - pull_request
+  - push
 
 permissions:
   contents: read
@@ -7,8 +9,7 @@ permissions:
 jobs:
   build:
     name: Build pull request
-    runs-on: ubuntu22-8-32
-    if: ${{ github.repository == 'spring-projects/spring-boot' }}
+    runs-on: ubuntu-latest
     steps:
       - name: Set up JDK 8
         uses: actions/setup-java@v3
@@ -24,19 +25,27 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/gradle-build-action@842c587ad8aa4c68eeba24c396e15af4c2e9f30a
+        with:
+          gradle-version: 7.6.3 # based on gradle-wrapper.properties
 
       - name: Build
         env:
           CI: 'true'
           GRADLE_ENTERPRISE_URL: 'https://ge.spring.io'
-        run: ./gradlew -Dorg.gradle.internal.launcher.welcomeMessageEnabled=false --no-daemon --no-parallel --continue build
+        run: ./gradlew -Dorg.gradle.internal.launcher.welcomeMessageEnabled=false --no-daemon build
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-jars
+          path: '**/build/libs/*.jar'
 
       - name: Print JVM thread dumps when cancelled
         uses: ./.github/actions/print-jvm-thread-dumps
         if: cancelled()
 
       - name: Upload build reports
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: build-reports
